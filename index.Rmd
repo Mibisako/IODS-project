@@ -1,6 +1,6 @@
 ---
 title: "IODS course project"
-author: "Volkova Anastasiia"
+author: "Volkova Anastasia"
 output:
   html_document:
     theme: cosmo

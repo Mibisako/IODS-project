@@ -1,5 +1,5 @@
 This is my diary for the "Introduction to Open Science" Massive Open Online Course:
 
-https://github.com/Mibisako/IODS-project/
+https://mibisako.github.io/IODS-project/
 
 https://mooc.helsinki.fi/course/view.php?id=92
