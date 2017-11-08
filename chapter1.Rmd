@@ -1,4 +1,6 @@
 
 # About the project
 
-*Write a short description about the course and add a link to your github repository here. This is an R markdown (.Rmd) file so you can use R markdown syntax. See the 'Useful links' page in the mooc area (chapter 1) for instructions.*
+**This is a task for "Introduction to Open Science" MOOC. During the first session I have succesfully created a GitHub account, download the needed software and finished "R short and sweet" on DataCamp platform.**
+
+https://github.com/Mibisako/IODS-project
