@@ -1,38 +1,96 @@
 **Logistic Regression**
 
 ```{r}
-task<-read.table("C:/Users/Missao/Documents/GitHub/IODS-project/data/learning2014.txt", header=TRUE, sep="\t")
-str(task)
-dim(task)
-```
-
-The dataset is the result of a survey on teaching and learning conducted by Kimmo Vehkalahti in 2014. Additional information about this research project can be found here https://www.slideshare.net/kimmovehkalahti/the-relationship-between-learning-approaches-and-students-achievements-in-an-introductory-statistics-course-in-finland and there http://www.helsinki.fi/~kvehkala/JYTmooc/JYTOPKYS2-meta.txt.
-
-```{r}
 library(ggplot2)
 library(GGally)
-ggpairs(task, lower = list(combo = wrap("facethist", bins = 20)))
+library(dplyr)
+library(tidyr)
+task<-read.table("C:/Users/Missao/Documents/GitHub/IODS-project/alc.csv", header=TRUE, sep=";")
+names(task)
 ```
 
-There were more females than males in the study. The age of people ranges from 17 to 55 years, and the distribution is positively skewed. Three learning approaches (deep, surface and strategic) have more or less close to normal distributions, though "deep approach" is left-skewed. One of the highest correlation is between deep and surface approaches, and as logically expected, it is negative (those who have high scores on questions related to deep approach, have low scores on surface questions). It seems that the global attitude towards statistics was the most related to the obtained points, as their relationship shows a highest correlation. 
+The dataset contains data on student alcohol consumption based on the dataset from https://archive.ics.uci.edu/ml/datasets/Student+Performance. 
+The variables not used for joining the two data have been combined by averaging (including the grade variables).
+'alc_use' is the average of 'Dalc' and 'Walc' - (workday alcohol consumption and weekend alcohol consumption). 
+'high_use' is TRUE if 'alc_use' is higher than 2 and FALSE otherwise.
+
+*Hypotheses*
+
+According to the DataCamp exercises, we can assume that sex (males), failures and absences (those who have them), are positively correlated with alcohol consumption. As a student, I can also state that people who like to party are usually have high level of alcohol consumption, and that would be my fourth hypothesis. 
 
 ```{r}
-my_model <- lm(Points ~ attitude + strategic_adjusted + surface_adjusted, data = task)
-summary(my_model)
+par(mfrow=c(1,2))
+ggplot(data = task, aes(x = alc_use)) + geom_bar()
+ggplot(data = task, aes(x = absences)) + geom_bar()
 ```
 
-As it seems from the p-values, the learning approaches are statistically insignificant in relation to the exam points. Still, according to the F-test of overall significance, the fit of the intercept-only model is significantly reduced compared to the obtained model (p-value<0.05).
+The overall distribution of alcohol consumption is left-skewed, so where are much more people who do not drink booze. Same thing can be said about the amount of absences - there are not so many people with high level of skipping classes, and distribution is very skewed.
 
 ```{r}
-my_model2 <- lm(Points ~ attitude, data = task)
-summary(my_model2)
+task %>% group_by(alc_use, sex) %>% summarise(count = n(), mean_failures = mean(failures), mean_absences = mean(absences), mean_goout = mean(goout))
 ```
 
-According to R-squared, the final model explains around 18,5% of variance in the outcome. The better is the general attitude towards statistics, the better the exam scores are (3,5255 score per each unit of attitude increase). 
+The result of cross-tabulation proves that there can be seen a trend with positive correlation, and our hypotheses are proven to some extent.
+
 
 ```{r}
-par(mfrow=c(2,2))
-plot(my_model2, which=c(1,2,5))
+par(mfrow=c(1,2))
+g1 <- ggplot(task, aes(x = high_use, col = sex, y = absences))
+g1 + geom_boxplot() + ylab("absences")
+g2 <- ggplot(task, aes(x = high_use, col = sex, y = goout))
+g2 + geom_boxplot() + ylab("goout")
 ```
 
-According to the first graph, the assumptions that the relationship is linear and the variances of the error terms are equal is reasonable, as most of the residuals lay horizontally around the 0 line. However, there are some outliers, and the ID of the most deviant cases can be seen on the graph. Second graph mostly supports previous statements, though the "tails" of the distributed pattern show that there are outliers and that the residuals are not ideally normally distributed. According to the third graph, there are no influential observations, so those outliers that were identified before are not a big deal. 
+The boxplots show us some outliers in the data and support our hypothesis. There is no difference in means for those who have low level of alcohol consumption, but highly drinking males are more likely to have more absences than highly drinking women, and they are more likely to go out than them. 
+
+
+```{r}
+m1 <- glm(high_use ~ sex + failures + absences + goout, data = task, family = "binomial")
+summary(m1)
+```
+
+It seems that we can omit the failures from the further analysis (p>0.05).
+
+
+```{r}
+m2 <- glm(high_use ~ sex + absences + goout, data = task, family = "binomial")
+summary(m2)
+OR <- coef(m2) %>% exp # compute odds ratios (OR)
+CI <- confint(m2) %>% exp # compute confidence intervals (CI)
+cbind(OR, CI)
+```
+
+According to the results of the final model, male students are more likely to be heavy users of alcohol, and the same goes for those who more going out and less going to the class. So our hypotheses were statistically proven. According to the odds ratio, male students are 2,5 times more likely to drink a lot than female students. The ratio between odds of those who often go out and those who are not going out are equal to almost 2. The rather small odds ratio of absences may be due to the effect of the distribution's skeweness and big scale.
+
+```{r}
+probabilities <- predict(m1, type = "response") # predict() the probability of high_use
+task <- mutate(task, probability = probabilities) # add the predicted probabilities
+task <- mutate(task, prediction = probability>0.5) # use the probabilities to make a prediction of high_use
+select(task, absences, sex, goout, high_use, probability, prediction) %>% tail(10) # see the last ten original classes, predicted probabilities, and class predictions
+table(high_use = task$high_use, prediction = task$prediction) # tabulate the target variable versus the predictions
+table(high_use = task$high_use, prediction = task$prediction) %>% prop.table() %>% addmargins() # tabulate the target variable versus the predictions with margings:
+g <- ggplot(task, aes(x = probability, y = high_use, col = prediction)) # initialize a plot of 'high_use' versus 'probability'
+g + geom_point() # define the geom as points and draw the plot
+# define a loss function (mean prediction error)
+loss_func <- function(class, prob) {
+  n_wrong <- abs(class - prob) > 0.5
+  mean(n_wrong)
+}
+
+# call loss_func to compute the average number of wrong predictions in the (training) data
+loss_func(class = task$high_use, task$probability)
+``` 
+
+The obtained model is not ideal: while there were 302 correct predictions, there also were 90 cases that were diagnosted false (Type I&II errors). But still, this is a reasonable fit, as the training error is approximately 21%.
+
+```{r}
+#Bonus task: cross-validation
+library(boot)
+cv <- cv.glm(data = task, cost = loss_func, glmfit = m1, K = 10)
+# average number of wrong predictions in the cross validation
+cv$delta[1]
+```
+
+The model introduced in DataCamp had about 0,26 error, and this has about 0,22. So it has better test set performance (smaller prediction error using 10-fold cross-validation).
+
+
