@@ -1,0 +1,38 @@
+**Logistic Regression**
+
+```{r}
+task<-read.table("C:/Users/Missao/Documents/GitHub/IODS-project/data/learning2014.txt", header=TRUE, sep="\t")
+str(task)
+dim(task)
+```
+
+The dataset is the result of a survey on teaching and learning conducted by Kimmo Vehkalahti in 2014. Additional information about this research project can be found here https://www.slideshare.net/kimmovehkalahti/the-relationship-between-learning-approaches-and-students-achievements-in-an-introductory-statistics-course-in-finland and there http://www.helsinki.fi/~kvehkala/JYTmooc/JYTOPKYS2-meta.txt.
+
+```{r}
+library(ggplot2)
+library(GGally)
+ggpairs(task, lower = list(combo = wrap("facethist", bins = 20)))
+```
+
+There were more females than males in the study. The age of people ranges from 17 to 55 years, and the distribution is positively skewed. Three learning approaches (deep, surface and strategic) have more or less close to normal distributions, though "deep approach" is left-skewed. One of the highest correlation is between deep and surface approaches, and as logically expected, it is negative (those who have high scores on questions related to deep approach, have low scores on surface questions). It seems that the global attitude towards statistics was the most related to the obtained points, as their relationship shows a highest correlation. 
+
+```{r}
+my_model <- lm(Points ~ attitude + strategic_adjusted + surface_adjusted, data = task)
+summary(my_model)
+```
+
+As it seems from the p-values, the learning approaches are statistically insignificant in relation to the exam points. Still, according to the F-test of overall significance, the fit of the intercept-only model is significantly reduced compared to the obtained model (p-value<0.05).
+
+```{r}
+my_model2 <- lm(Points ~ attitude, data = task)
+summary(my_model2)
+```
+
+According to R-squared, the final model explains around 18,5% of variance in the outcome. The better is the general attitude towards statistics, the better the exam scores are (3,5255 score per each unit of attitude increase). 
+
+```{r}
+par(mfrow=c(2,2))
+plot(my_model2, which=c(1,2,5))
+```
+
+According to the first graph, the assumptions that the relationship is linear and the variances of the error terms are equal is reasonable, as most of the residuals lay horizontally around the 0 line. However, there are some outliers, and the ID of the most deviant cases can be seen on the graph. Second graph mostly supports previous statements, though the "tails" of the distributed pattern show that there are outliers and that the residuals are not ideally normally distributed. According to the third graph, there are no influential observations, so those outliers that were identified before are not a big deal. 
