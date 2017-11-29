@@ -1,0 +1,83 @@
+**Clusters**
+
+```{r}
+library(MASS)
+str(Boston)
+dim(Boston)
+```
+Details about the Boston dataset can be seen here: https://stat.ethz.ch/R-manual/R-devel/library/MASS/html/Boston.html. It has 506 observations of 14 variables.
+
+```{r}
+library(corrplot)
+library(tidyverse)
+cor_matrix <- cor(Boston)
+corrplot.mixed(cor_matrix, number.cex = .6)
+```
+Plenty of correlations. For example, per capita crime negatively related to the index of accessibility to radial highways and full-value property-tax rate per \$10,000.
+
+```{r}
+boston_scaled <- scale(Boston)
+summary(boston_scaled)
+boston_scaled <- as.data.frame(boston_scaled)
+```
+After scaling the mean of all variables is 0, as all of them have the same scale now.
+
+```{r}
+bins <- quantile(boston_scaled$crim)
+crime <- cut(boston_scaled$crim, breaks = bins, inlcude.lowest = TRUE, label = c("low", "med_low", "med_high", "high"))
+table(crime)
+boston_scaled <- dplyr::select(boston_scaled, -crim)
+boston_scaled <- data.frame(boston_scaled, crime)
+n <- nrow(boston_scaled)
+ind <- sample(n, size = n*0.8)
+train <- boston_scaled[ind,]
+test <- boston_scaled[-ind,]
+```
+
+We have created a categorical variable of the crime rate from the scaled crime rate, while using the quantiles as the break points in the categorical variable. After that we omit old variable from the dataset.  Then we chose randomly 80% of the rows and created two sets for training and test.
+
+```{r}
+lda.fit <- lda(crime ~., data = train)
+lda.fit
+lda.arrows <- function(x, myscale = 1, arrow_heads = 0.1, color = "red", tex = 0.75, choices = c(1,2)){
+  heads <- coef(x)
+  arrows(x0 = 0, y0 = 0, 
+         x1 = myscale * heads[,choices[1]], 
+         y1 = myscale * heads[,choices[2]], col=color, length = arrow_heads)
+  text(myscale * heads[,choices], labels = row.names(heads), 
+       cex = tex, col=color, pos=3)
+}
+classes <- as.numeric(train$crime)
+plot(lda.fit, dimen = 2, col=classes, pch= classes)
+
+```
+
+We fitted the linear discriminant analysis on the train set, using the categorical crime rate as the target variable and all the other variables in the dataset as predictor variables. Results were visualized with the LDA plot.
+
+```{r}
+correct_classes <- test$crime
+test <- dplyr::select(test, -crime)
+lda.pred <- predict(lda.fit, newdata = test)
+table(correct = correct_classes, predicted = lda.pred$class) 
+```
+
+According to the table, 71 predictions are correct, and around 30% are incorrect.
+
+```{r}
+boston_scaled2 <- scale(Boston)
+summary(boston_scaled2)
+boston_scaled2 <- as.data.frame(boston_scaled2)
+dist_eu <- dist(boston_scaled2)
+summary(dist_eu)
+km <- kmeans(boston_scaled2, centers = 3)
+set.seed(123)
+k_max <- 10
+twcss <- sapply(1:k_max, function(k){kmeans (boston_scaled2, k)$tot.withinss})
+#let's do it with the reasonable number of clusters
+km <- kmeans(boston_scaled2, centers = 2)
+pairs(boston_scaled2, col=km$cluster)
+pairs(boston_scaled2[1:5], col=km$cluster)
+pairs(boston_scaled2[6:10], col=km$cluster)
+```
+
+We can see "black" and "red" clusters and how they are distributed in each variable.
