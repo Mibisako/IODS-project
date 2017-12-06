@@ -1,0 +1,60 @@
+**Dimensionality reduction techniques**
+
+```{r}
+library(MASS)
+human = read.table("data/human.txt", sep="\t")
+dim(human)
+```
+Details can be seen on the Human Development Index site. The dataset has 155 observations of 8 variables.
+
+```{r}
+library(GGally)
+ggpairs(human)
+```
+Plenty of correlations - for instance, the maternal mortality rate and life expectancy are highly negatively correlated (-0.857) while expected education in years is highly positively correlated to life expectancy (0.789). There not so much women in the parliament. There are more women with education rather with employment. 
+
+```{r}
+pca_human <- prcomp(human)
+summary(pca_human)
+pca_pr <- round(100*summary(pca_human)$importance[2, ], digits = 1)
+pc_lab <- paste0(names(pca_pr), " (", pca_pr, "%)")
+biplot(pca_human, choices = 1:2,cex = c(0.5, 0.6),xlab = pc_lab[1], ylab = pc_lab[2])
+```
+GNI highly influence the first component of PCA, and so it captures almost all the variability, perhaps due to the unstandardized data.
+
+```{r}
+human_std <- scale(human)
+pca_humanstd <- prcomp(human_std)
+pca_pr <- round(100*summary(pca_humanstd)$importance[2, ], digits = 1)
+pc_lab <- paste0(names(pca_pr), " (", pca_pr, "%)")
+biplot(pca_humanstd, choices = 1:2,cex = c(0.5, 0.6),xlab = pc_lab[1], ylab = pc_lab[2])
+```
+
+Health and education variables contribute more to the first component, while labour and parliament variables - to the second. Standardization helped with the disproportions of component's contribution - now the first component explains around half of variance, and together with the second they explain around 70 percentage of it.
+
+```{r}
+library(FactoMineR)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+data("tea")
+str(tea)
+summary(tea)
+keep_columns <- c("Tea", "How", "how", "sugar", "where", "lunch")
+tea_time <- dplyr::select(tea, one_of(keep_columns))
+tidyr::gather(tea_time) %>% ggplot(aes(value)) + facet_wrap("key", scales = "free")+geom_bar()+theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 8))
+summary(tea_time)
+str(tea_time)
+```
+
+The tea dataset contains 300 observations and 36 variables.
+Tea is drinked separately most usually separatedly from any additions, not in the lunch time, and simply using tea bag from chain store. The distribution of sugar/no sugar is almost unimodal.
+
+```{r}
+
+mca <- MCA(tea_time, graph = FALSE)
+summary(mca)
+plot(mca, invisible=c("ind"))
+```
+
+It make sense that unpackaged tea is near the tea shop while tea bag is near chain store. Also it seems that there is a distinction between "black tea with limon, no sugar" and "Earl Grey with milk and sugar" - fast googling shows that these combinations are typical.
